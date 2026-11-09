@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devsecops-ai-api
+  namespace: devsecops-ai
+  labels:
+    app: devsecops-ai-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: devsecops-ai-api
+  template:
+    metadata:
+      labels:
+        app: devsecops-ai-api
+    spec:
+      containers:
+        - name: api
+          image: devsecops-ai-platform:0.1.1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          envFrom:
+            - configMapRef:
+                name: devsecops-ai-config

@@ -1,0 +1,17 @@
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: devsecops-ai-api-service
+  namespace: devsecops-ai
+  labels:
+    app: devsecops-ai-api
+spec:
+  type: ClusterIP
+  selector:
+    app: devsecops-ai-api
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 8000
