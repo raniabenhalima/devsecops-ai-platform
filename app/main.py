@@ -1,6 +1,9 @@
 from fastapi import FastAPI, Request, Response
 from prometheus_client import Counter, Histogram, generate_latest, CONTENT_TYPE_LATEST
 import time
+from pydantic import BaseModel
+from fastapi import HTTPException
+from app.ai.llm import generate_response
 
 app = FastAPI(
     title="DevSecOps AI Platform",
@@ -66,3 +69,61 @@ def metrics():
         content=generate_latest(),
         media_type=CONTENT_TYPE_LATEST,
     )
+
+
+class IncidentRequest(BaseModel):
+    logs: str
+
+
+@app.post("/ai/analyze")
+async def analyze_incident(request: IncidentRequest):
+    prompt = f"""
+
+You are a Senior DevSecOps and Kubernetes Incident Response Engineer.
+
+Analyze the following incident logs.
+
+STRICT RULES:
+- Never invent facts or vulnerabilities.
+- Clearly distinguish observed facts from hypotheses.
+- Do not claim a root cause without sufficient evidence.
+- Do not recommend restarting containers as a generic fix.
+- Provide diagnostic commands before remediation.
+- All Kubernetes commands must use valid kubectl syntax.
+- Never invent Kubernetes resource names.
+- If namespace is unknown, explicitly use -n <namespace>.
+- Use kubectl logs <pod-name> --previous for previous container logs.
+- Use kubectl describe pod <pod-name> for pod events.
+- Use kubectl get endpoints or kubectl get endpointslices to inspect service connectivity.
+- Never use kubectl scale on a Pod.
+- Never recommend destructive actions without evidence.
+- Mark commands requiring placeholders clearly.
+- Never claim that a diagnostic command proves a root cause.
+
+Use this structure:
+
+1. INCIDENT SUMMARY
+2. OBSERVED FACTS
+3. POSSIBLE ROOT CAUSES
+4. SECURITY RISKS (evidence-based)
+5. DIAGNOSTIC COMMANDS
+6. RECOMMENDED REMEDIATION
+7. CONFIDENCE LEVEL (Low, Medium, High)
+
+Incident logs:
+{request.logs}
+"""
+
+
+    try:
+        analysis = await generate_response(prompt)
+        return {
+            "status": "success",
+            "analysis": analysis
+        }
+
+    except Exception as error:
+        raise HTTPException(
+            status_code=503,
+            detail=f"AI service unavailable: {str(error)}"
+        )
